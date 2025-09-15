@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediBot - Your AI Health Assistant</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <!-- Background Elements -->
+    <div class="background-elements">
+        <div class="floating-element element-1"></div>
+        <div class="floating-element element-2"></div>
+        <div class="floating-element element-3"></div>
+        <div class="floating-element element-4"></div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Header -->
+        <header class="chat-header">
+            <div class="header-content">
+                <div class="bot-avatar">
+                    <div class="avatar-ring">
+                        <i class="fas fa-user-md"></i>
+                    </div>
+                    <div class="status-indicator"></div>
+                </div>
+                <div class="bot-info">
+                    <h1>MediBot</h1>
+                    <p>Your AI Health Assistant</p>
+                    <div class="typing-indicator" id="typingIndicator">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                </div>
+                <div class="header-actions">
+                    <button class="action-btn" id="clearChat" title="Clear Chat">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                    <button class="action-btn" id="settingsBtn" title="Settings">
+                        <i class="fas fa-cog"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Chat Container -->
+        <div class="chat-container">
+            <!-- Welcome Message -->
+            <div class="welcome-message" id="welcomeMessage">
+                <div class="welcome-content">
+                    <div class="welcome-icon">
+                        <i class="fas fa-stethoscope"></i>
+                    </div>
+                    <h2>Welcome to MediBot!</h2>
+                    <p>I'm your AI-powered medical assistant. I can help you with health questions, symptoms, and general medical information.</p>
+                    <div class="quick-actions">
+                        <button class="quick-btn" data-message="What are the symptoms of flu?">
+                            <i class="fas fa-thermometer-half"></i>
+                            Flu Symptoms
+                        </button>
+                        <button class="quick-btn" data-message="How to maintain a healthy diet?">
+                            <i class="fas fa-apple-alt"></i>
+                            Healthy Diet
+                        </button>
+                        <button class="quick-btn" data-message="What is high blood pressure?">
+                            <i class="fas fa-heartbeat"></i>
+                            Blood Pressure
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Messages Container -->
+            <div class="messages-container" id="messagesContainer">
+                <!-- Messages will be added here dynamically -->
+            </div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="input-area">
+            <form id="messageForm" class="message-form">
+                <div class="input-wrapper">
+                    <button type="button" class="attachment-btn" title="Attach File">
+                        <i class="fas fa-paperclip"></i>
+                    </button>
+                    <input 
+                        type="text" 
+                        id="messageInput" 
+                        name="msg" 
+                        placeholder="Ask me anything about your health..." 
+                        autocomplete="off"
+                        required
+                    >
+                    <button type="submit" class="send-btn" id="sendBtn">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+                <div class="input-suggestions" id="inputSuggestions">
+                    <button type="button" class="suggestion" data-text="What are the side effects of aspirin?">Side effects of aspirin</button>
+                    <button type="button" class="suggestion" data-text="How much water should I drink daily?">Daily water intake</button>
+                    <button type="button" class="suggestion" data-text="What is diabetes?">About diabetes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner">
+            <div class="spinner"></div>
+            <p>MediBot is thinking...</p>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            let messageCount = 0;
+            
+            // Hide welcome message after first interaction
+            function hideWelcomeMessage() {
+                $('#welcomeMessage').fadeOut(500);
+            }
+            
+            // Show typing indicator
+            function showTypingIndicator() {
+                $('#typingIndicator').addClass('active');
+            }
+            
+            // Hide typing indicator
+            function hideTypingIndicator() {
+                $('#typingIndicator').removeClass('active');
+            }
+            
+            // Create message element
+            function createMessage(content, isUser = false) {
+                const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                const messageClass = isUser ? 'user-message' : 'bot-message';
+                const avatar = isUser ? 
+                    '<i class="fas fa-user"></i>' : 
+                    '<i class="fas fa-user-md"></i>';
+                
+                return `
+                    <div class="message ${messageClass}">
+                        <div class="message-avatar">
+                            ${avatar}
+                        </div>
+                        <div class="message-content">
+                            <div class="message-bubble">
+                                ${content}
+                            </div>
+                            <div class="message-time">${time}</div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // Add message to chat
+            function addMessage(content, isUser = false) {
+                if (messageCount === 0) {
+                    hideWelcomeMessage();
+                }
+                
+                const messageHtml = createMessage(content, isUser);
+                $('#messagesContainer').append(messageHtml);
+                
+                // Animate new message
+                const newMessage = $('#messagesContainer .message').last();
+                newMessage.hide().fadeIn(300);
+                
+                // Scroll to bottom
+                setTimeout(() => {
+                    $('.chat-container').animate({
+                        scrollTop: $('.chat-container')[0].scrollHeight
+                    }, 300);
+                }, 100);
+                
+                messageCount++;
+            }
+            
+            // Handle form submission
+            $('#messageForm').on('submit', function(e) {
+                e.preventDefault();
+                
+                const userMessage = $('#messageInput').val().trim();
+                if (!userMessage) return;
+                
+                // Add user message
+                addMessage(userMessage, true);
+                $('#messageInput').val('');
+                
+                // Show loading and typing
+                showTypingIndicator();
+                $('#loadingOverlay').fadeIn(200);
+                
+                // Send to backend
+                $.ajax({
+                    url: '/get',
+                    type: 'POST',
+                    data: { msg: userMessage },
+                    success: function(response) {
+                        // Hide loading
+                        $('#loadingOverlay').fadeOut(200);
+                        hideTypingIndicator();
+                        
+                        // Add bot response with delay for natural feel
+                        setTimeout(() => {
+                            addMessage(response);
+                        }, 500);
+                    },
+                    error: function() {
+                        $('#loadingOverlay').fadeOut(200);
+                        hideTypingIndicator();
+                        addMessage('Sorry, I encountered an error. Please try again.');
+                    }
+                });
+            });
+            
+            // Quick action buttons
+            $('.quick-btn').on('click', function() {
+                const message = $(this).data('message');
+                $('#messageInput').val(message);
+                $('#messageForm').submit();
+            });
+            
+            // Suggestion buttons
+            $(document).on('click', '.suggestion', function() {
+                const text = $(this).data('text');
+                $('#messageInput').val(text);
+                $('#messageInput').focus();
+            });
+            
+            // Clear chat
+            $('#clearChat').on('click', function() {
+                $('#messagesContainer').empty();
+                $('#welcomeMessage').fadeIn(500);
+                messageCount = 0;
+            });
+            
+            // Input focus animations
+            $('#messageInput').on('focus', function() {
+                $('.input-wrapper').addClass('focused');
+                $('#inputSuggestions').slideDown(200);
+            }).on('blur', function() {
+                $('.input-wrapper').removeClass('focused');
+                setTimeout(() => {
+                    $('#inputSuggestions').slideUp(200);
+                }, 150);
+            });
+            
+            // Auto-resize input
+            $('#messageInput').on('input', function() {
+                this.style.height = 'auto';
+                this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediBot - Camera & Voice Medical Assistant</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .voice-controls {
+            display: flex;
+            gap: 10px;
+            margin: 10px 0;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .voice-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 50px;
+            color: white;
+            padding: 15px 20px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 200px;
+            justify-content: center;
+        }
+        
+        .voice-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .voice-btn:active {
+            transform: translateY(0);
+        }
+        
+        .voice-btn.speaking {
+            background: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%);
+            animation: pulse 1.5s infinite;
+        }
+        
+        .voice-btn.test {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+        }
+        
+        .camera-btn {
+            background: linear-gradient(135deg, #00b894 0%, #00a085 100%);
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .voice-status {
+            text-align: center;
+            margin: 10px 0;
+            font-weight: 500;
+            color: #666;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+        
+        .camera-modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.8);
+        }
+        
+        .camera-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 600px;
+            position: relative;
+        }
+        
+        .camera-close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .camera-close:hover {
+            color: #000;
+        }
+        
+        #camera-video {
+            width: 100%;
+            max-width: 500px;
+            height: auto;
+            border-radius: 10px;
+            margin: 10px 0;
+        }
+        
+        .camera-controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        
+        .camera-btn-control {
+            background: linear-gradient(135deg, #00b894 0%, #00a085 100%);
+            border: none;
+            border-radius: 25px;
+            color: white;
+            padding: 12px 24px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .camera-btn-control:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .camera-btn-control.capture {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+        }
+        
+        .camera-btn-control.cancel {
+            background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+        }
+        
+        .processing-overlay {
+            display: none;
+            position: fixed;
+            z-index: 1001;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.8);
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .processing-content {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            max-width: 400px;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 2s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .feature-highlight {
+            background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        .feature-highlight h3 {
+            margin: 0 0 10px 0;
+        }
+        
+        .feature-highlight p {
+            margin: 0;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <!-- Background Elements -->
+    <div class="background-elements">
+        <div class="floating-element element-1"></div>
+        <div class="floating-element element-2"></div>
+        <div class="floating-element element-3"></div>
+        <div class="floating-element element-4"></div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Header -->
+        <header class="chat-header">
+            <div class="header-content">
+                <div class="bot-avatar">
+                    <div class="avatar-ring">
+                        <i class="fas fa-user-md"></i>
+                    </div>
+                    <div class="status-indicator"></div>
+                </div>
+                <div class="bot-info">
+                    <h1>MediBot Camera Assistant</h1>
+                    <p>AI Health Assistant with Camera & Voice Features</p>
+                    <div class="typing-indicator" id="typingIndicator">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                </div>
+                <div class="header-actions">
+                    <button class="action-btn" id="clearChat" title="Clear Chat">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                    <button class="action-btn" id="settingsBtn" title="Settings">
+                        <i class="fas fa-cog"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Feature Highlight -->
+        <div class="feature-highlight">
+            <h3><i class="fas fa-camera"></i> New Camera Feature!</h3>
+            <p>Click the camera icon to scan doctor's prescriptions and get instant analysis</p>
+        </div>
+
+        <!-- Voice Controls -->
+        <div class="voice-controls">
+            <button class="voice-btn" id="voiceOutputBtn" title="Click to hear the last response">
+                <i class="fas fa-volume-up"></i>
+                🔊 Listen to Response
+            </button>
+            <button class="voice-btn test" id="testVoiceBtn" title="Test voice functionality">
+                <i class="fas fa-microphone"></i>
+                🎤 Test Voice
+            </button>
+        </div>
+        
+        <div class="voice-status" id="voiceStatus">Type your medical question, use camera to scan prescriptions, or click voice buttons</div>
+
+        <!-- Chat Container -->
+        <div class="chat-container">
+            <!-- Welcome Message -->
+            <div class="welcome-message" id="welcomeMessage">
+                <div class="welcome-content">
+                    <div class="welcome-icon">
+                        <i class="fas fa-camera"></i>
+                    </div>
+                    <h2>Welcome to MediBot Camera Assistant!</h2>
+                    <p>I'm your AI-powered medical assistant with camera and voice features. You can:</p>
+                    <ul style="text-align: left; margin: 20px 0;">
+                        <li>📷 <strong>Scan prescriptions</strong> - Click the camera icon to capture and analyze doctor's prescriptions</li>
+                        <li>🎤 <strong>Voice output</strong> - Hear responses spoken aloud</li>
+                        <li>💊 <strong>Medicine info</strong> - Get detailed information about WHO-verified medicines</li>
+                        <li>🏥 <strong>Medical advice</strong> - Ask about symptoms and treatments</li>
+                    </ul>
+                    <div class="quick-actions">
+                        <button class="quick-btn" data-message="What are the symptoms of flu?">
+                            <i class="fas fa-thermometer-half"></i>
+                            Flu Symptoms
+                        </button>
+                        <button class="quick-btn" data-message="Tell me about Tylenol">
+                            <i class="fas fa-pills"></i>
+                            Medicine Info
+                        </button>
+                        <button class="quick-btn" data-message="How to treat a fever?">
+                            <i class="fas fa-heartbeat"></i>
+                            Fever Treatment
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Messages Container -->
+            <div class="messages-container" id="messagesContainer">
+                <!-- Messages will be added here dynamically -->
+            </div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="input-area">
+            <form id="messageForm" class="message-form">
+                <div class="input-wrapper">
+                    <button type="button" class="attachment-btn" id="cameraBtn" title="Scan Prescription">
+                        <i class="fas fa-camera"></i>
+                    </button>
+                    <input 
+                        type="text" 
+                        id="messageInput" 
+                        name="msg" 
+                        placeholder="Ask me anything about your health or scan a prescription..." 
+                        autocomplete="off"
+                        required
+                    >
+                    <button type="submit" class="send-btn" id="sendBtn">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Camera Modal -->
+    <div id="cameraModal" class="camera-modal">
+        <div class="camera-content">
+            <span class="camera-close" id="cameraClose">&times;</span>
+            <h2><i class="fas fa-camera"></i> Scan Prescription</h2>
+            <p>Position the prescription clearly in the camera view and click capture.</p>
+            
+            <video id="camera-video" autoplay></video>
+            <canvas id="camera-canvas" style="display: none;"></canvas>
+            
+            <div class="camera-controls">
+                <button class="camera-btn-control capture" id="captureBtn">
+                    <i class="fas fa-camera"></i>
+                    Capture
+                </button>
+                <button class="camera-btn-control cancel" id="cancelBtn">
+                    <i class="fas fa-times"></i>
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Processing Overlay -->
+    <div id="processingOverlay" class="processing-overlay">
+        <div class="processing-content">
+            <div class="spinner"></div>
+            <h3>Processing Prescription...</h3>
+            <p>Extracting text and analyzing prescription details...</p>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner">
+            <div class="spinner"></div>
+            <p>MediBot is thinking...</p>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            let messageCount = 0;
+            let isSpeaking = false;
+            let lastBotResponse = "";
+            let stream = null;
+            
+            // Camera functionality
+            const cameraModal = document.getElementById('cameraModal');
+            const cameraBtn = document.getElementById('cameraBtn');
+            const cameraClose = document.getElementById('cameraClose');
+            const captureBtn = document.getElementById('captureBtn');
+            const cancelBtn = document.getElementById('cancelBtn');
+            const video = document.getElementById('camera-video');
+            const canvas = document.getElementById('camera-canvas');
+            const processingOverlay = document.getElementById('processingOverlay');
+            
+            // Open camera modal
+            cameraBtn.addEventListener('click', function() {
+                cameraModal.style.display = 'block';
+                startCamera();
+            });
+            
+            // Close camera modal
+            cameraClose.addEventListener('click', closeCamera);
+            cancelBtn.addEventListener('click', closeCamera);
+            
+            // Close modal when clicking outside
+            window.addEventListener('click', function(event) {
+                if (event.target === cameraModal) {
+                    closeCamera();
+                }
+            });
+            
+            function startCamera() {
+                navigator.mediaDevices.getUserMedia({ video: true })
+                    .then(function(mediaStream) {
+                        stream = mediaStream;
+                        video.srcObject = stream;
+                    })
+                    .catch(function(err) {
+                        console.error('Error accessing camera:', err);
+                        alert('Could not access camera. Please ensure camera permissions are granted.');
+                    });
+            }
+            
+            function closeCamera() {
+                cameraModal.style.display = 'none';
+                if (stream) {
+                    stream.getTracks().forEach(track => track.stop());
+                    stream = null;
+                }
+            }
+            
+            // Capture image
+            captureBtn.addEventListener('click', function() {
+                const context = canvas.getContext('2d');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                context.drawImage(video, 0, 0);
+                
+                const imageData = canvas.toDataURL('image/jpeg');
+                
+                closeCamera();
+                processPrescription(imageData);
+            });
+            
+            function processPrescription(imageData) {
+                processingOverlay.style.display = 'flex';
+                
+                $.ajax({
+                    url: '/process-prescription',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({image: imageData}),
+                    success: function(data) {
+                        processingOverlay.style.display = 'none';
+                        
+                        if (data.success) {
+                            addMessage(data.response);
+                            lastBotResponse = data.response;
+                        } else {
+                            addMessage('Error processing prescription: ' + (data.error || 'Unknown error'));
+                        }
+                    },
+                    error: function() {
+                        processingOverlay.style.display = 'none';
+                        addMessage('Error processing prescription. Please try again.');
+                    }
+                });
+            }
+            
+            // Hide welcome message after first interaction
+            function hideWelcomeMessage() {
+                $('#welcomeMessage').fadeOut(500);
+            }
+            
+            // Show typing indicator
+            function showTypingIndicator() {
+                $('#typingIndicator').addClass('active');
+            }
+            
+            // Hide typing indicator
+            function hideTypingIndicator() {
+                $('#typingIndicator').removeClass('active');
+            }
+            
+            // Create message element
+            function createMessage(content, isUser = false) {
+                const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                const messageClass = isUser ? 'user-message' : 'bot-message';
+                const avatar = isUser ? 
+                    '<i class="fas fa-user"></i>' : 
+                    '<i class="fas fa-user-md"></i>';
+                
+                return `
+                    <div class="message ${messageClass}">
+                        <div class="message-avatar">
+                            ${avatar}
+                        </div>
+                        <div class="message-content">
+                            <div class="message-bubble">
+                                ${content}
+                            </div>
+                            <div class="message-time">${time}</div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // Add message to chat
+            function addMessage(content, isUser = false) {
+                if (messageCount === 0) {
+                    hideWelcomeMessage();
+                }
+                
+                const messageHtml = createMessage(content, isUser);
+                $('#messagesContainer').append(messageHtml);
+                
+                // Animate new message
+                const newMessage = $('#messagesContainer .message').last();
+                newMessage.hide().fadeIn(300);
+                
+                // Scroll to bottom
+                setTimeout(() => {
+                    $('.chat-container').animate({
+                        scrollTop: $('.chat-container')[0].scrollHeight
+                    }, 300);
+                }, 100);
+                
+                messageCount++;
+                
+                // Store bot response for voice output
+                if (!isUser) {
+                    lastBotResponse = content;
+                }
+            }
+            
+            // Voice Output Button
+            $('#voiceOutputBtn').on('click', function() {
+                if (isSpeaking) return;
+                
+                if (!lastBotResponse) {
+                    $('#voiceStatus').text('No response to speak. Ask a question or scan a prescription first!');
+                    return;
+                }
+                
+                isSpeaking = true;
+                $(this).addClass('speaking');
+                $('#voiceStatus').text('Speaking response...');
+                
+                $.ajax({
+                    url: '/speak',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({text: lastBotResponse}),
+                    success: function(data) {
+                        if (data.success) {
+                            $('#voiceStatus').text('Speaking... (Click again to stop)');
+                            const estimatedTime = Math.max(5000, lastBotResponse.length * 100);
+                            setTimeout(() => {
+                                isSpeaking = false;
+                                $('#voiceOutputBtn').removeClass('speaking');
+                                $('#voiceStatus').text('Voice assistant ready - Click to hear responses');
+                            }, estimatedTime);
+                        } else {
+                            isSpeaking = false;
+                            $('#voiceOutputBtn').removeClass('speaking');
+                            $('#voiceStatus').text('Text-to-speech error: ' + (data.error || 'Unknown error'));
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        isSpeaking = false;
+                        $('#voiceOutputBtn').removeClass('speaking');
+                        $('#voiceStatus').text('Text-to-speech error: ' + error);
+                    }
+                });
+            });
+            
+            // Test Voice Button
+            $('#testVoiceBtn').on('click', function() {
+                $('#voiceStatus').text('Testing voice system...');
+                
+                $.ajax({
+                    url: '/test-voice',
+                    type: 'GET',
+                    success: function(data) {
+                        if (data.success) {
+                            $('#voiceStatus').text('Voice test started - you should hear a test message');
+                            setTimeout(() => {
+                                $('#voiceStatus').text('Voice test completed - system is working');
+                            }, 5000);
+                        } else {
+                            $('#voiceStatus').text('Voice test failed: ' + (data.error || 'Unknown error'));
+                        }
+                    },
+                    error: function() {
+                        $('#voiceStatus').text('Voice test error - check console for details');
+                    }
+                });
+            });
+            
+            // Handle form submission
+            $('#messageForm').on('submit', function(e) {
+                e.preventDefault();
+                
+                const userMessage = $('#messageInput').val().trim();
+                if (!userMessage) return;
+                
+                // Add user message
+                addMessage(userMessage, true);
+                $('#messageInput').val('');
+                
+                // Show loading and typing
+                showTypingIndicator();
+                $('#loadingOverlay').fadeIn(200);
+                
+                // Send to backend
+                $.ajax({
+                    url: '/get',
+                    type: 'POST',
+                    data: { msg: userMessage },
+                    success: function(response) {
+                        // Hide loading
+                        $('#loadingOverlay').fadeOut(200);
+                        hideTypingIndicator();
+                        
+                        // Add bot response with delay for natural feel
+                        setTimeout(() => {
+                            addMessage(response);
+                        }, 500);
+                    },
+                    error: function() {
+                        $('#loadingOverlay').fadeOut(200);
+                        hideTypingIndicator();
+                        addMessage('Sorry, I encountered an error. Please try again.');
+                    }
+                });
+            });
+            
+            // Quick action buttons
+            $('.quick-btn').on('click', function() {
+                const message = $(this).data('message');
+                $('#messageInput').val(message);
+                $('#messageForm').submit();
+            });
+            
+            // Clear chat
+            $('#clearChat').on('click', function() {
+                $('#messagesContainer').empty();
+                $('#welcomeMessage').fadeIn(500);
+                messageCount = 0;
+                lastBotResponse = "";
+            });
+        });
+    </script>
+</body>
+</html>
