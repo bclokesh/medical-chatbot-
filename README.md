@@ -89,3 +89,11 @@ DrTruvia_AI_Chatbot/
 ├── requirements.txt # Dependencies
 ├── .env # Environment variables
 └── README.md # Documentation
+## 🖼️ Project Preview
+
+![Dr.Truvia Chatbot Dashboard](./https://github.com/bclokesh/medical-chatbot-/blob/main/WhatsApp%20Image%202025-10-27%20at%2020.27.00_1c031fd8.jpg)
+*Main Interface — WHO-Verified Medical AI Chatbot System*
+
+![Dr.Truvia Chatbot Input Section](./https://github.com/bclokesh/medical-chatbot-/blob/main/WhatsApp%20Image%202025-10-27%20at%2020.27.00_b14c9505.jpg)
+*Voice + Camera Integration and WHO Verified Question Interface*
+
